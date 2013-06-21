@@ -3,12 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/http"
-	"strings"
-	"encoding/json"
 	"code.google.com/p/goconf/conf"
-	"github.com/vil1/guerra/gerrit"
-	"github.com/vil1/guerra/jira"
+	"github.com/vil1/gerra/gerrit"
+	"github.com/vil1/gerra/jira"
+	"log"
+	"os"
 )
 
 const (
@@ -23,66 +22,46 @@ var(
 	project = flag.String("project", "", "")
 	author = flag.String("author", "", "")
 	branch = flag.String("branch", "", "")
-	commit = flag.String("commit","","")
+	commitId = flag.String("commit","","")
 	verified = flag.Int("VRIF", 0, "")
 	validated = flag.Int("CRVW", 0, "")
-	client *http.Client
+	client *jira.Client
 	user, pwd string
+	logFile *os.File
 )
 
 func init() {
 	flag.Parse()
-	client = new(http.Client)
 	if cfg, err := conf.ReadConfigFile("foo.conf"); err == nil {
-		user, err = cfg.GetString("default", "user")
-		pwd, err = cfg.GetString("default", "password")
+		if user, err = cfg.GetString("jira", "user") ; err != nil {
+			panic(err)
+		}
+		if pwd, err = cfg.GetString("jira", "password"); err != nil {
+			panic(err)
+		}
+	} else {
+		panic(err)
 	}
-	fmt.Println(user)
-	fmt.Println(pwd)
+	client = jira.NewClient("http://jira.fullsix.com/rest/api/2", user, pwd)
+ 	var err error
+	if logFile, err = os.OpenFile("hooks.log", os.O_APPEND | os.O_WRONLY, 0600); err == nil {
+		log.SetOutput(logFile)
+	} else {
+		panic(err)
+	}
 }
 
 func main() {
-
-	var message string
-	var err error
-	key := gerrit.GetCommit(*project, *branch, *commit).GetIssueKey()
-
-	if *validated <= 0 || *verified <= 0{
-		jira.Reject(key)
-	}
-}
-
-func acquireMessage(proj string, br string, cm string)(msg string, err error) {
-	return
-}
-
-func getIssueKey(msg string)(key string){
-	return
-}
-
-type transition struct {
-	id string
-}
-
-func reject(key string) {
-	var request *http.Request
-	var err error
-	if request, err = http.NewRequest("GET",strings.Join([]string{baseUrl, api, "issues" , key, "transitions"}, "/"), nil ); err != nil {
-		request.SetBasicAuth(user, pwd)
-	}
-	if resp, err := client.Do(request); err == nil {
-		defer resp.Body.Close()
-		decoder := json.NewDecoder(resp.Body)
-		var transitions []transition
-		decoder.Decode(transitions)
-		fmt.Println(transitions)
-	} else {
-
-	}
-	return
-
-}
-
-func accept(){
-
+	defer func(){
+		if err := logFile.Close(); err != nil {
+			panic(err)
+		}
+	}()
+	commit := gerrit.GetCommit(*project, *commitId)
+	fmt.Printf("commit : %v", commit)
+	key := commit.GetIssueKey()
+	fmt.Printf("key : %s\n",key)
+	//if *validated < 0 || *verified < 0{
+		client.Reject(key)
+	//}
 }
