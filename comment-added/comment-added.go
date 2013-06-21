@@ -7,6 +7,8 @@ import (
 	"strings"
 	"encoding/json"
 	"code.google.com/p/goconf/conf"
+	"github.com/vil1/guerra/gerrit"
+	"github.com/vil1/guerra/jira"
 )
 
 const (
@@ -43,15 +45,10 @@ func main() {
 
 	var message string
 	var err error
-	if message, err = acquireMessage(*project, *branch, *commit) ; err != nil {
-		return
-	}
+	key := gerrit.GetCommit(*project, *branch, *commit).GetIssueKey()
 
-	key := getIssueKey(message)
-	if *validated <= 0 {
-		reject(key)
-	} else {
-		accept()
+	if *validated <= 0 || *verified <= 0{
+		jira.Reject(key)
 	}
 }
 
