@@ -15,6 +15,7 @@ var (
 
 func init(){
 	issueRegexp, _ = regexp.Compile("[A-Z]+-[0-9]+")
+
 }
 
 type Commit struct {
@@ -28,8 +29,16 @@ func (c * Commit) GetIssueKey() string {
 	return string(issueRegexp.Find([]byte(c.Subject)))
 }
 
-func GetCommit(project, id string)(commit *Commit){
-	cmd := exec.Command("ssh", "-p", "29418", "kasas@hudson2", "gerrit", "query", "--format=JSON", "commit:" + id, "project:" + project, "limit:1")
+type Client struct {
+	host, port string
+}
+
+func NewClient(host, port string) *Client {
+	return &Client{host, port}
+}
+
+func (c *Client) GetCommit(project, id string)(commit *Commit){
+	cmd := exec.Command("ssh", "-p", c.port, c.host, "gerrit", "query", "--format=JSON", "commit:" + id, "project:" + project, "limit:1")
 	buff := bytes.NewBuffer([]byte{})
 	cmd.Stdout = buff
 	cmd.Run()
