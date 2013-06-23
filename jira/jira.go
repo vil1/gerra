@@ -1,14 +1,22 @@
 package jira
 
 import (
-	"net/http"
-	"fmt"
-	"log"
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"github.com/vil1/gerra/config"
+	"log"
+	"io"
+	"net/http"
 )
 
-type Issue struct {}
+var DefaultClient *Client
+
+func init() {
+	DefaultClient = NewClient(config.JiraBaseUrl, config.User, config.Pwd)
+}
+
+type Issue struct{}
 
 type transition struct {
 	identified
@@ -21,21 +29,29 @@ type Client struct {
 }
 
 type request struct {
-	method string
+	method       string
 	pathTemplate string
-	body interface{}
-	parameters []interface{}
+	body         interface{}
+	parameters   []interface{}
 }
 
-func NewClient(baseUrl, user, password string)(client *Client){
+func NewClient(baseUrl, user, password string) (client *Client) {
 	return &Client{baseUrl, user, password, http.DefaultClient}
 }
 
-
-func (c *Client)do(req *request)(resp *http.Response, err error){
+func (c *Client) do(req *request) (resp *http.Response, err error) {
 	url := c.baseUrl + fmt.Sprintf(req.pathTemplate, req.parameters...)
-	body := bytes.NewBuffer(make([]byte, 1024))
-	json.NewEncoder(body).Encode(req.body)
+	var body io.ReadWriter
+	if req.body != nil {
+		body = bytes.NewBuffer([]byte{})
+		json.NewEncoder(body).Encode(req.body)
+	}
+	if body != nil {
+		log.Printf("%s : %s |%s|\n", req.method, url, string(body.(*bytes.Buffer).Bytes()))
+	} else {
+		log.Printf("%s : %s \n", req.method, url)
+	}
+
 	request, err := http.NewRequest(req.method, url, body)
 	request.SetBasicAuth(c.user, c.password)
 	request.Header.Set("Content-Type", "application/json")
@@ -43,10 +59,10 @@ func (c *Client)do(req *request)(resp *http.Response, err error){
 }
 
 type issue struct {
-	Id string
+	Id          string
 	Transitions []transition
-	Changelog struct {
-		Histories [] history
+	Changelog   struct {
+		Histories []history
 	}
 }
 
@@ -55,34 +71,42 @@ type named struct {
 }
 
 type identified struct {
-	Id string  `json:"id"`
+	Id string `json:"id"`
 }
 
-type history struct{
-	Id string
+type history struct {
+	Id     string
 	Author named
-	Items []item
+	Items  []item
 }
 
 type item struct {
-	Field , ToString, FromString string
+	Field, ToString, FromString string
 }
 
 type doTransition struct {
 	Transition identified `json:"transition"`
 }
 
-type fields struct{
-	Assignee named `json:"assignee"`
+type fields struct {
+	Assignee   named `json:"assignee"`
 	Resolution named `json:"resolution"`
 }
 
-func (c *Client)Reject(key string){
+func (c *Client) Reject(key string) {
+	c.performTransition(key, "Reject")
+}
+
+func (c *Client) Accept(key string) {
+	c.performTransition(key, "Submit to QA")
+}
+
+func (c *Client) performTransition(key, name string) {
 	issue, err := c.getIssue(key)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if id, err := findTransitionId(issue.Transitions, "Reject"); err == nil {
+	if id, err := findTransitionId(issue.Transitions, name); err == nil {
 		postResponse, postError := c.do(&request{
 			"POST",
 			"/issue/%s/transitions",
@@ -90,8 +114,11 @@ func (c *Client)Reject(key string){
 				identified{id},
 			},
 			[]interface{}{key}})
-		if postResponse.StatusCode != http.StatusOK || postError != nil {
-			log.Fatalln(postError, postResponse)
+		if postError != nil {
+			log.Fatalln(postError)
+		}
+		if postResponse.StatusCode != http.StatusNoContent {
+			log.Fatalln(postResponse)
 		}
 		author := findLastAuthor(issue.Changelog.Histories, "Code Review")
 		if err := c.setAssignee(issue, author); err != nil {
@@ -104,29 +131,29 @@ func (c *Client)Reject(key string){
 
 type CommunicationError string
 
-func (c CommunicationError)Error()string {
+func (c CommunicationError) Error() string {
 	return string(c)
 }
 
-func (c *Client) getIssue(key string)(*issue, error) {
+func (c *Client) getIssue(key string) (*issue, error) {
 	response, err := c.do(&request{"GET", "/issue/%s?fields=transitions&expand=transitions,changelog", nil, []interface{}{key}})
 	if err != nil {
 		return nil, err
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil , CommunicationError(fmt.Sprintf("Unable to fetch issue data : %v", response))
+		return nil, CommunicationError(fmt.Sprintf("Unable to fetch issue data : %v", response))
 	}
 	issue := new(issue)
 	err = json.NewDecoder(response.Body).Decode(issue)
 	return issue, err
 }
 
-func (c *Client)setAssignee(issue *issue, newAssignee string) error {
+func (c *Client) setAssignee(issue *issue, newAssignee string) error {
 	response, err := c.do(&request{"PUT", "/issue/%s/assignee", named{newAssignee}, []interface{}{issue.Id}})
 	if err != nil {
-    	return err
-	} else if response.StatusCode != http.StatusOK {
-    	return CommunicationError(fmt.Sprintf("Unable to set assignee %v", response))
+		return err
+	} else if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusAccepted && response.StatusCode != http.StatusNoContent {
+		return CommunicationError(fmt.Sprintf("Unable to set assignee %v", response))
 	}
 	return nil
 }
@@ -135,11 +162,11 @@ type TransitionNotFound struct {
 	msg string
 }
 
-func (tnfe *TransitionNotFound) Error() string{
+func (tnfe *TransitionNotFound) Error() string {
 	return tnfe.msg
 }
 
-func findTransitionId(transitions []transition, name string)(string, error){
+func findTransitionId(transitions []transition, name string) (string, error) {
 	for _, t := range transitions {
 		if t.Name == name {
 			return t.Id, nil
@@ -148,10 +175,10 @@ func findTransitionId(transitions []transition, name string)(string, error){
 	return "", &TransitionNotFound{"Cannot " + name}
 }
 
-func findLastAuthor(hist []history, status string)(string) {
-	for _, h := range hist{
+func findLastAuthor(hist []history, status string) string {
+	for _, h := range hist {
 		for _, i := range h.Items {
-			if i.Field == "status" &&  i.ToString == status {
+			if i.Field == "status" && i.ToString == status {
 				return h.Author.Name
 			}
 		}

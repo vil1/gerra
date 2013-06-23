@@ -1,0 +1,11 @@
+[jira]
+
+baseUrl = http://jira.example.com/rest/api/2
+user = fred
+password = fred
+
+
+[gerrit]
+
+host = localhost
+port = 29418

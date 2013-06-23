@@ -2,54 +2,50 @@ package main
 
 import (
 	"flag"
+	"github.com/vil1/gerra/config"
 	"github.com/vil1/gerra/gerrit"
 	"github.com/vil1/gerra/jira"
-	"github.com/vil1/gerra/config"
-	"log"
-	"os"
 )
 
 const (
 	baseUrl = "http://jira.fullsix.com"
-	api = "rest/api/latest"
+	api     = "rest/api/latest"
 )
 
-var(
-	changeId = flag.String("change", "", "")
-	changeUrl = flag.String("change-url", "", "")
-	comment = flag.String("comment", "", "")
-	project = flag.String("project", "", "")
-	author = flag.String("author", "", "")
-	branch = flag.String("branch", "", "")
-	commitId = flag.String("commit","","")
-	verified = flag.Int("VRIF", 0, "")
-	validated = flag.Int("CRVW", 0, "")
-	jiraClient *jira.Client
-	gerritClient * gerrit.Client
-	logFile *os.File
+var (
+	changeId,
+	changeUrl,
+	comment,
+	project,
+	author,
+	branch,
+	commitId string
+	verified,
+	validated int
 )
 
 func init() {
+	flag.StringVar(&changeId, "change", "", "")
+	flag.StringVar(&changeUrl, "change-url", "", "")
+	flag.StringVar(&comment, "comment", "", "")
+	flag.StringVar(&project, "project", "", "")
+	flag.StringVar(&author, "author", "", "")
+	flag.StringVar(&branch, "branch", "", "")
+	flag.StringVar(&commitId, "commit", "", "")
+	flag.IntVar(&verified, "VRIF", 0, "")
+	flag.IntVar(&validated, "CRVW", 0, "")
 	flag.Parse()
-	jiraClient = jira.NewClient("http://jira.fullsix.com/rest/api/2", config.User, config.Pwd)
-	gerritClient = gerrit.NewClient(config.Host, config.Port)
- 	var err error
-	if logFile, err = os.OpenFile("hooks.log", os.O_APPEND | os.O_WRONLY, 0600); err == nil {
-		log.SetOutput(logFile)
-	} else {
-		panic(err)
-	}
 }
 
 func main() {
-	defer func(){
-		if err := logFile.Close(); err != nil {
+	defer func() {
+		if err := config.LogFile.Close(); err != nil {
 			panic(err)
 		}
 	}()
-	commit := gerritClient.GetCommit(*project, *commitId)
-	key := commit.GetIssueKey()
-	if *validated < 0 || *verified < 0{
-		jiraClient.Reject(key)
+	if validated < 0 || verified < 0 {
+		if key := gerrit.DefaultClient.GetIssueFromCommit(project, commitId); key != "" {
+			jira.DefaultClient.Reject(key)
+		}
 	}
 }

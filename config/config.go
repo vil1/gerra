@@ -2,29 +2,39 @@ package config
 
 import (
 	"code.google.com/p/goconf/conf"
+	"log"
+	"os"
 	"strings"
 )
 
 var (
+	configPath,
 	User,
 	Pwd,
 	Host,
-	Port string
+	Port,
+	JiraBaseUrl string
+	LogFile *os.File
 )
 
-func init(){
+func init() {
 	var errors Errors
-	if cfg, err := conf.ReadConfigFile("gerra.conf"); err == nil {
-		if User, err = cfg.GetString("jira", "user") ; err != nil {
+	basePath := os.Args[0]
+	configPath = basePath[0:strings.LastIndex(basePath, "/")]
+	if cfg, err := conf.ReadConfigFile(configPath + "/hooks.conf"); err == nil {
+		if User, err = cfg.GetString("jira", "user"); err != nil {
 			errors = append(errors, err)
 		}
 		if Pwd, err = cfg.GetString("jira", "password"); err != nil {
 			errors = append(errors, err)
 		}
-		if Host, err = cfg.GetString("gerrit", "user") ; err != nil {
+		if JiraBaseUrl, err = cfg.GetString("jira", "baseUrl"); err != nil {
 			errors = append(errors, err)
 		}
-		if Port, err = cfg.GetString("gerrit", "password"); err != nil {
+		if Host, err = cfg.GetString("gerrit", "host"); err != nil {
+			errors = append(errors, err)
+		}
+		if Port, err = cfg.GetString("gerrit", "port"); err != nil {
 			errors = append(errors, err)
 		}
 		if len(errors) > 0 {
@@ -33,12 +43,18 @@ func init(){
 	} else {
 		panic(err)
 	}
+	var err error
+	if LogFile, err = os.OpenFile(configPath + "/hooks.log", os.O_APPEND|os.O_WRONLY, 0600); err == nil {
+		log.SetOutput(LogFile)
+		log.SetFlags(log.LstdFlags | log.Lshortfile)
+	} else {
+		panic(err)
+	}
 }
-
 
 type Errors []error
 
-func (e Errors)Error()string {
+func (e Errors) Error() string {
 	errStrings := make([]string, len(e))
 	for i, err := range e {
 		errStrings[i] = err.Error()
