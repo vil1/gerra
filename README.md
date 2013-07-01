@@ -16,8 +16,10 @@ Currently, only `comment-added` and `change-merged` are supported.
 
 ## Installation
 
-1. Inside your `$GOPATH` (see http://golang.org for further info) :  ```go get github.com/vil1/gerra/comment-added
-go get github.com/vil1/gerra/change-merged```
+1. Inside your `$GOPATH` (see http://golang.org for further info) :  
+```
+$ go get github.com/vil1/gerra/comment-added github.com/vil1/gerra/change-merged
+```
 
 2. Copy or move `$GOPATH/bin/comment-added` and `$GOPATH/bin/change-merged` inside the `$site_path/hooks` folder of your gerrit installation 
 
