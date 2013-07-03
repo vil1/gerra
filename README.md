@@ -2,14 +2,16 @@
 
 Gerra is a set of hooks that connect Gerrit code review events to JIRA issues workflow transitions. 
 
-As of version [2.2.1](http://gerrit.googlecode.com/svn/documentation/2.2.1/config-hooks.html), Gerrit provides hooks for the following events : 
+As of version [2.5.2](http://gerrit-documentation.googlecode.com/svn/Documentation/2.5.2/config-hooks.html), Gerrit provides hooks for the following events : 
 
 * patchset-created
+* draft-published
 * comment-added
 * change-abandoned
 * change-restored
 * change-merged
 * ref-updated
+* cla-signed
 
 Currently, only `comment-added` and `change-merged` are supported.
 
@@ -61,5 +63,5 @@ Since it contains non-encrypted sensitive data, you may make sure that this file
 
 Gerra is currently tested against :
 
-* Gerrit version **2.2.1**
+* Gerrit version **2.5.2**
 * JIRA version **5.2.11**
