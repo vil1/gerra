@@ -1,24 +1,31 @@
 package gerrit
 
 import (
+	"bytes"
 	"testing"
 )
 
 func TestGetIssueKey(t *testing.T) {
-	commit := &Commit{Subject: "[CMS-998] this is a test commit"}
+	commit := &Change{Subject: "[CMS-998] this is a test commit"}
 	if commit.GetIssueKey() != "CMS-998" {
 		t.Fail()
 	}
 
-	commit = &Commit{Subject: "this is a test commit"}
+	commit = &Change{Subject: "this is a test commit"}
 	if commit.GetIssueKey() != "" {
 		t.Fail()
 	}
 }
 
-func Test() {}
+func TestReadCommits(t *testing.T) {
+	reader := bytes.NewReader(input)
+	commits, summary := ReadCommits(reader)
+	if rowCount := int(summary["rowCount"].(float64)); rowCount != len(commits) {
+		t.Errorf("expected %d but found %d commits\n", rowCount, len(commits))
+	}
+}
 
-const input = `{"project":"cms","branch":"4.5-develop","id":"I4969fb4daa8207e3675e89540d7b894aef689941","number":"329","subject":"[CMS-555] translatable metadata formatter, display name of link to unpublished document, thumbnail removed, fileInfo fixed (size)","owner":{"name":"Jakub Kubiczak","email":"jakub.kubiczak@ekino.com","username":"jakub.kubiczak"},"url":"http://maven.fullsix.com/gerrit/329","createdOn":1370506980,"lastUpdated":1370960779,"sortKey":"0025aca200000149","open":false,"status":"ABANDONED"}
+var input = []byte(`{"project":"cms","branch":"4.5-develop","id":"I4969fb4daa8207e3675e89540d7b894aef689941","number":"329","subject":"[CMS-555] translatable metadata formatter, display name of link to unpublished document, thumbnail removed, fileInfo fixed (size)","owner":{"name":"Jakub Kubiczak","email":"jakub.kubiczak@ekino.com","username":"jakub.kubiczak"},"url":"http://maven.fullsix.com/gerrit/329","createdOn":1370506980,"lastUpdated":1370960779,"sortKey":"0025aca200000149","open":false,"status":"ABANDONED"}
 {"project":"cms","branch":"4.5-develop","id":"I53fc8508f79757e9531f2ddac357bf16bb33e3e9","number":"351","subject":"media metadata, refactoring fileUploadForm","owner":{"name":"Valentin Kasas","email":"kasas@fullsix.com","username":"kasas"},"url":"http://maven.fullsix.com/gerrit/351","createdOn":1370865776,"lastUpdated":1370866881,"sortKey":"0025a6850000015f","open":false,"status":"ABANDONED"}
 {"project":"cms","branch":"4.5-develop","id":"Ic04c332158084802037e8fbe6b9525602b24bfd1","number":"350","subject":"[CMS-750, CMS-751] Media and document choose popups","owner":{"name":"Valentin Kasas","email":"kasas@fullsix.com","username":"kasas"},"url":"http://maven.fullsix.com/gerrit/350","createdOn":1370865776,"lastUpdated":1370866890,"sortKey":"0025a6850000015e","open":false,"status":"ABANDONED"}
 {"project":"cms","branch":"4.5-develop","id":"I67d56b7d07c7269a45007976c955fb53c4f87e63","number":"344","subject":"","owner":{"name":"Thomas Wermester","email":"wermester@fullsix.com","username":"wermester"},"url":"http://maven.fullsix.com/gerrit/344","createdOn":1370603641,"lastUpdated":1370603810,"sortKey":"0025956400000158","open":false,"status":"ABANDONED"}
@@ -84,4 +91,4 @@ const input = `{"project":"cms","branch":"4.5-develop","id":"I4969fb4daa8207e367
 {"project":"cms","branch":"4.5-develop","id":"If580e371d94ce29b6b703c2be645a801dafbb45f","number":"34","subject":"Revert \"[CMS-615] Publication Job Details Comparation mechanism\"","owner":{"name":"Valentin Kasas","email":"kasas@fullsix.com","username":"kasas"},"url":"http://maven.fullsix.com/gerrit/34","createdOn":1365412924,"lastUpdated":1365413168,"sortKey":"0024437600000022","open":false,"status":"ABANDONED"}
 {"project":"cms","branch":"4.5-develop","id":"I0e5134f2e6029836e85bb4bd713a0ddc3845da0e","number":"33","subject":"Revert \"[CMS-615] Publication Job Details Comparation mechanism\"","owner":{"name":"Valentin Kasas","email":"kasas@fullsix.com","username":"kasas"},"url":"http://maven.fullsix.com/gerrit/33","createdOn":1365412849,"lastUpdated":1365412879,"sortKey":"0024437100000021","open":false,"status":"ABANDONED"}
 {"project":"cms","branch":"4.5-develop","id":"I942f5b6572e9cbab8bc9ae90cb3a6c80bbd4c05e","number":"29","subject":"[CMS-615] disable details for jobs other than publication","owner":{"name":"Maciej Laskowski","email":"maciej.laskowski@fullsix.com","username":"maciej.laskowski"},"url":"http://maven.fullsix.com/gerrit/29","createdOn":1365412354,"lastUpdated":1365412779,"sortKey":"0024436f0000001d","open":false,"status":"ABANDONED"}
-{"type":"stats","rowCount":73,"runTimeMilliseconds":173}`
+{"type":"stats","rowCount":66,"runTimeMilliseconds":173}`)
