@@ -33,7 +33,7 @@ func main() {
 		}
 	}()
 	key := gerrit.DefaultClient.GetIssueFromCommit(project, commit)
-	if key != "" {
+	if key != "" && branch != key{
 		jira.DefaultClient.Accept(key)
 	}
 }
